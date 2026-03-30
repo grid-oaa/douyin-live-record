@@ -1,0 +1,25 @@
+.idea/
+.vscode/
+
+# Build output
+bin/
+
+# Local runtime data
+data/
+.local-test/
+.tmp-integration/
+.tmp-real/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+
+# Media output
+*.mp4
+*.ts
