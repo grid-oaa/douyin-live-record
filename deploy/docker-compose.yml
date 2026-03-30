@@ -1,0 +1,31 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.dev
+    container_name: douyin-live-record
+    working_dir: /workspace
+    ports:
+      - "8080:8080"
+    environment:
+      APP_LISTEN_ADDR: ":8080"
+      APP_DB_PATH: "/data/db/recorder.db"
+      APP_RECORDINGS_ROOT: "/data/recordings"
+      APP_COOKIES_ROOT: "/data/cookies"
+      APP_ADMIN_USERNAME: "admin"
+      APP_ADMIN_PASSWORD: "admin123456"
+      APP_SESSION_TTL_HOURS: "168"
+      APP_PROBE_TIMEOUT_SECONDS: "20"
+      APP_PROCESS_STOP_WAIT_SECONDS: "8"
+    volumes:
+      - ..:/workspace
+      - douyin_recorder_db:/data/db
+      - douyin_recorder_recordings:/data/recordings
+      - douyin_recorder_cookies:/data/cookies
+    command: ["go", "run", "./cmd/app"]
+    restart: unless-stopped
+
+volumes:
+  douyin_recorder_db:
+  douyin_recorder_recordings:
+  douyin_recorder_cookies:

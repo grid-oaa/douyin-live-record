@@ -1,0 +1,19 @@
+FROM golang:1.24-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates ffmpeg python3 python3-pip sqlite3 git \
+    && pip3 install --no-cache-dir --break-system-packages streamlink \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+COPY go.mod ./
+RUN go mod download
+
+ENV APP_LISTEN_ADDR=:8080 \
+    APP_DB_PATH=/data/db/recorder.db \
+    APP_RECORDINGS_ROOT=/data/recordings \
+    APP_COOKIES_ROOT=/data/cookies \
+    APP_ADMIN_USERNAME=admin \
+    APP_ADMIN_PASSWORD=admin123456
+
+CMD ["go", "run", "./cmd/app"]
