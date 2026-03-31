@@ -106,11 +106,11 @@ type RecordSegment struct {
 }
 
 type ServiceEvent struct {
-	ID        int64
-	Level     string
-	EventType string
-	Message   string
-	CreatedAt time.Time
+	ID        int64     `json:"id"`
+	Level     string    `json:"level"`
+	EventType string    `json:"event_type"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type RuntimeStatus struct {
@@ -125,4 +125,3 @@ type RuntimeStatus struct {
 	RecordingRoot     string         `json:"recording_root"`
 	AppliedConfigHint []ConfigApplyInfo `json:"applied_config_hint"`
 }
-

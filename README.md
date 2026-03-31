@@ -53,3 +53,60 @@ docker run -d \
 - 录制过程先写入 `TS` 分段，直播结束后自动合并为 `MP4`
 - `cookies_file` 需要填写相对 `/data/cookies` 的路径
 - 首次启动会自动初始化管理员账号
+
+## 启动命令
+
+本地：
+
+```cmd
+docker run -d `
+  --name douyin-live-record `
+  -p 8080:8080 `
+  -v D:\workspace\douyin-live-record:/workspace `
+  -v D:\workspace\douyin-live-record\.local-test\db:/data/db `
+  -v D:\workspace\douyin-live-record\.local-test\recordings:/data/recordings `
+  -v D:\workspace\douyin-live-record\.local-test\cookies:/data/cookies `
+  -e APP_LISTEN_ADDR=:8080 `
+  -e APP_DB_PATH=/data/db/recorder.db `
+  -e APP_RECORDINGS_ROOT=/data/recordings `
+  -e APP_COOKIES_ROOT=/data/cookies `
+  -e APP_ADMIN_USERNAME=admin `
+  -e APP_ADMIN_PASSWORD=admin123456 `
+  -e APP_SESSION_TTL_HOURS=168 `
+  -e APP_PROBE_TIMEOUT_SECONDS=20 `
+  -e APP_PROCESS_STOP_WAIT_SECONDS=8 `
+  -w /workspace `
+  douyin-live-record-dev:latest `
+  /usr/local/go/bin/go run ./cmd/app
+```
+
+线上
+
+~~~shell
+docker run -d --name douyin-live-record --restart unless-stopped -p 8888:8080 -e APP_LISTEN_ADDR=:8080 -e APP_DB_PATH=/data/db/recorder.db -e APP_RECORDINGS_ROOT=/data/recordings -e APP_COOKIES_ROOT=/data/cookies -e APP_ADMIN_USERNAME=admin -e APP_ADMIN_PASSWORD='admin' -e APP_SESSION_TTL_HOURS=168 -e APP_PROBE_TIMEOUT_SECONDS=20 -e APP_PROCESS_STOP_WAIT_SECONDS=8 -v /project/douyin-live-record/db:/data/db -v /project/douyin-live-record/recordings:/data/recordings -v /project/douyin-live-record/cookies:/data/cookies douyin-live-record-dev:latest 
+~~~
+
+## 镜像构建
+
+~~~sh
+docker build -f deploy/Dockerfile.prod -t douyin-live-record:latest .
+
+~~~
+
+
+
+## 镜像保存
+
+~~~sh
+docker save -o douyin-live-record-latest.tar douyin-live-record:latest
+~~~
+
+
+
+## 镜像导入
+
+~~~sh
+docker load -i douyin-live-record-latest.tar
+
+~~~
+

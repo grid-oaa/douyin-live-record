@@ -20,6 +20,8 @@ import (
 	"douyin-live-record/internal/storage"
 )
 
+const routePrefix = "/douyin-live"
+
 type App struct {
 	cfg       env.Config
 	logger    *slog.Logger
@@ -99,41 +101,55 @@ func (a *App) Close() {
 }
 
 func (a *App) routes() {
-	a.mux.HandleFunc("/", a.handleIndex)
-	a.mux.HandleFunc("/login", a.handleLoginPage)
-	a.mux.HandleFunc("/healthz", a.handleHealthz)
-	a.mux.HandleFunc("/assets/app.css", a.handleCSS)
-	a.mux.HandleFunc("/assets/app.js", a.handleJS)
+	a.mux.HandleFunc("/", a.handleRoot)
+	a.mux.HandleFunc(routePrefix, a.handleIndex)
+	a.mux.HandleFunc(routePrefix+"/{$}", a.handleIndex)
+	a.mux.HandleFunc(routePath("/login"), a.handleLoginPage)
+	a.mux.HandleFunc(routePath("/healthz"), a.handleHealthz)
+	a.mux.HandleFunc(routePath("/assets/app.css"), a.handleCSS)
+	a.mux.HandleFunc(routePath("/assets/app.js"), a.handleJS)
 
-	a.mux.HandleFunc("/api/login", a.handleAPILogin)
-	a.mux.HandleFunc("/api/logout", a.requireAPIAuth(a.handleAPILogout))
-	a.mux.HandleFunc("/api/config", a.requireAPIAuth(a.handleAPIConfig))
-	a.mux.HandleFunc("/api/status", a.requireAPIAuth(a.handleAPIStatus))
-	a.mux.HandleFunc("/api/history", a.requireAPIAuth(a.handleAPIHistory))
-	a.mux.HandleFunc("/api/recording/start", a.requireAPIAuth(a.handleAPIStartRecording))
-	a.mux.HandleFunc("/api/recording/stop", a.requireAPIAuth(a.handleAPIStopRecording))
-	a.mux.HandleFunc("/api/recording/rebuild-latest", a.requireAPIAuth(a.handleAPIRebuildLatest))
+	a.mux.HandleFunc(routePath("/api/login"), a.handleAPILogin)
+	a.mux.HandleFunc(routePath("/api/logout"), a.requireAPIAuth(a.handleAPILogout))
+	a.mux.HandleFunc(routePath("/api/config"), a.requireAPIAuth(a.handleAPIConfig))
+	a.mux.HandleFunc(routePath("/api/status"), a.requireAPIAuth(a.handleAPIStatus))
+	a.mux.HandleFunc(routePath("/api/history"), a.requireAPIAuth(a.handleAPIHistory))
+	a.mux.HandleFunc(routePath("/api/recording/start"), a.requireAPIAuth(a.handleAPIStartRecording))
+	a.mux.HandleFunc(routePath("/api/recording/stop"), a.requireAPIAuth(a.handleAPIStopRecording))
+	a.mux.HandleFunc(routePath("/api/recording/rebuild-latest"), a.requireAPIAuth(a.handleAPIRebuildLatest))
 
-	a.mux.HandleFunc("/admin/config", a.requirePageAuth(a.handleConfigPage))
-	a.mux.HandleFunc("/admin/status", a.requirePageAuth(a.handleStatusPage))
-	a.mux.HandleFunc("/admin/history", a.requirePageAuth(a.handleHistoryPage))
+	a.mux.HandleFunc(routePath("/admin/config"), a.requirePageAuth(a.handleConfigPage))
+	a.mux.HandleFunc(routePath("/admin/status"), a.requirePageAuth(a.handleStatusPage))
+	a.mux.HandleFunc(routePath("/admin/history"), a.requirePageAuth(a.handleHistoryPage))
+}
+
+func (a *App) handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, routePath("/"), http.StatusFound)
 }
 
 func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.sessionToken(r); ok {
-		http.Redirect(w, r, "/admin/status", http.StatusFound)
-		return
-	}
-	http.Redirect(w, r, "/login", http.StatusFound)
-}
-
-func (a *App) handleLoginPage(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/login" {
+	if r.URL.Path != routePrefix && r.URL.Path != routePath("/") {
 		http.NotFound(w, r)
 		return
 	}
 	if _, ok := a.sessionToken(r); ok {
-		http.Redirect(w, r, "/admin/status", http.StatusFound)
+		http.Redirect(w, r, routePath("/admin/status"), http.StatusFound)
+		return
+	}
+	http.Redirect(w, r, routePath("/login"), http.StatusFound)
+}
+
+func (a *App) handleLoginPage(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != routePath("/login") {
+		http.NotFound(w, r)
+		return
+	}
+	if _, ok := a.sessionToken(r); ok {
+		http.Redirect(w, r, routePath("/admin/status"), http.StatusFound)
 		return
 	}
 	a.render(w, "login", pageData{Title: "登录"})
@@ -304,12 +320,12 @@ func (a *App) requirePageAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, ok := a.sessionToken(r)
 		if !ok {
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, routePath("/login"), http.StatusFound)
 			return
 		}
 		if _, err := a.auth.Authenticate(r.Context(), token); err != nil {
 			a.clearSessionCookie(w)
-			http.Redirect(w, r, "/login", http.StatusFound)
+			http.Redirect(w, r, routePath("/login"), http.StatusFound)
 			return
 		}
 		next(w, r)
@@ -344,7 +360,7 @@ func (a *App) setSessionCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "dlr_session",
 		Value:    token,
-		Path:     "/",
+		Path:     routePrefix,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(a.cfg.SessionTTL.Seconds()),
@@ -355,7 +371,7 @@ func (a *App) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "dlr_session",
 		Value:    "",
-		Path:     "/",
+		Path:     routePrefix,
 		MaxAge:   -1,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -421,6 +437,12 @@ var embeddedDummy embed.FS
 
 func loadTemplates() (*template.Template, error) {
 	funcMap := template.FuncMap{
+		"basePath": func() string {
+			return routePrefix
+		},
+		"appPath": func(path string) string {
+			return routePath(path)
+		},
 		"fmtTime": func(value *time.Time) string {
 			if value == nil {
 				return "-"
@@ -462,4 +484,14 @@ func loadTemplates() (*template.Template, error) {
 		},
 	}
 	return template.New("base").Funcs(funcMap).Parse(baseTemplate + loginTemplate + configTemplate + statusTemplate + historyTemplate)
+}
+
+func routePath(path string) string {
+	if path == "" || path == "/" {
+		return routePrefix + "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return routePrefix + path
 }

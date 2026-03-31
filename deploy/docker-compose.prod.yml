@@ -1,0 +1,21 @@
+services:
+  app:
+    image: douyin-live-record:latest
+    container_name: douyin-live-record
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      APP_LISTEN_ADDR: ":8080"
+      APP_DB_PATH: "/project/douyin-live-record/db/recorder.db"
+      APP_RECORDINGS_ROOT: "/project/douyin-live-record/recordings"
+      APP_COOKIES_ROOT: "/project/douyin-live-record/cookies"
+      APP_ADMIN_USERNAME: "admin"
+      APP_ADMIN_PASSWORD: "admin_xyt_123456"
+      APP_SESSION_TTL_HOURS: "168"
+      APP_PROBE_TIMEOUT_SECONDS: "20"
+      APP_PROCESS_STOP_WAIT_SECONDS: "8"
+    volumes:
+      - /project/douyin-live-record/db:/project/douyin-live-record/db
+      - /project/douyin-live-record/recordings:/project/douyin-live-record/recordings
+      - /project/douyin-live-record/cookies:/project/douyin-live-record/cookies

@@ -1,0 +1,37 @@
+FROM golang:1.24-bookworm AS builder
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/douyin-recorder ./cmd/app
+
+FROM golang:1.24-bookworm AS runtime
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates ffmpeg python3 python3-pip tzdata \
+    && pip3 install --no-cache-dir --break-system-packages streamlink \
+    && mkdir -p /app /project/douyin-live-record/db /project/douyin-live-record/recordings /project/douyin-live-record/cookies \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=builder /out/douyin-recorder /app/douyin-recorder
+
+ENV TZ=Asia/Shanghai \
+    APP_LISTEN_ADDR=:8080 \
+    APP_DB_PATH=/project/douyin-live-record/db/recorder.db \
+    APP_RECORDINGS_ROOT=/project/douyin-live-record/recordings \
+    APP_COOKIES_ROOT=/project/douyin-live-record/cookies \
+    APP_ADMIN_USERNAME=admin \
+    APP_ADMIN_PASSWORD=admin123456 \
+    APP_SESSION_TTL_HOURS=168 \
+    APP_PROBE_TIMEOUT_SECONDS=20 \
+    APP_PROCESS_STOP_WAIT_SECONDS=8
+
+VOLUME ["/project/douyin-live-record/db", "/project/douyin-live-record/recordings", "/project/douyin-live-record/cookies"]
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/douyin-recorder"]
